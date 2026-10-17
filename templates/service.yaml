@@ -1,19 +1,8 @@
 {{- if not .Values.operator.enabled }}
 {{- if .Values.service.enabled }}
-{{- $servicePorts := .Values.service.ports }}
+{{- $servicePorts := include "hermes-agent.servicePorts" . | fromJsonArray }}
 {{- if eq (len $servicePorts) 0 }}
-  {{- if .Values.apiServer.enabled }}
-    {{- $servicePorts = append $servicePorts (dict "name" "api-server" "port" (.Values.apiServer.port | int) "targetPort" (.Values.apiServer.port | int) "containerPort" (.Values.apiServer.port | int) "protocol" "TCP") }}
-  {{- end }}
-  {{- if .Values.webhook.enabled }}
-    {{- $servicePorts = append $servicePorts (dict "name" "webhook" "port" (.Values.webhook.port | int) "targetPort" (.Values.webhook.port | int) "containerPort" (.Values.webhook.port | int) "protocol" "TCP") }}
-  {{- end }}
-  {{- if .Values.telegramWebhook.enabled }}
-    {{- $servicePorts = append $servicePorts (dict "name" "telegram-webhook" "port" (.Values.telegramWebhook.port | int) "targetPort" (.Values.telegramWebhook.port | int) "containerPort" (.Values.telegramWebhook.port | int) "protocol" "TCP") }}
-  {{- end }}
-{{- end }}
-{{- if eq (len $servicePorts) 0 }}
-{{- fail "service.enabled=true requires either at least one entry in service.ports or an enabled apiServer/webhook/telegramWebhook port to expose" }}
+{{- fail "service.enabled=true requires either at least one entry in service.ports or an enabled apiServer/webhook/telegramWebhook/dashboard port to expose" }}
 {{- end }}
 apiVersion: v1
 kind: Service

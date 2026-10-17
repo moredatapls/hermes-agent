@@ -203,6 +203,18 @@ spec:
             - name: {{ $key }}
               value: {{ printf "%v" $value | quote }}
             {{- end }}
+            {{- if .Values.dashboard.enabled }}
+            - name: HERMES_DASHBOARD
+              value: "true"
+            - name: HERMES_DASHBOARD_HOST
+              value: {{ .Values.dashboard.host | quote }}
+            - name: HERMES_DASHBOARD_PORT
+              value: {{ .Values.dashboard.port | quote }}
+            {{- with .Values.dashboard.publicUrl }}
+            - name: HERMES_DASHBOARD_PUBLIC_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             {{- if $apiServerEnabled }}
             - name: API_SERVER_ENABLED
               value: "true"

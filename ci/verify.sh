@@ -71,6 +71,30 @@ pass helm template hermes . -f ci/pre-bootstrap-values.yaml >"$TMP_DIR/pre-boots
 pass helm template hermes . -f ci/pre-bootstrap-values.yaml --set bootstrap.enabled=false \
   --set-json 'npmPackages=[]' --set-json 'extraInitContainers=[]' >"$TMP_DIR/pre-bootstrap-only.yaml"
 pass helm template hermes . --set bootstrap.enabled=false >"$TMP_DIR/no-init.yaml"
+pass helm template hermes . --set dashboard.enabled=true --set dashboard.port=9120 \
+  --set dashboard.publicUrl=https://hermes.example.test --set service.enabled=true \
+  --set ingress.enabled=true >"$TMP_DIR/dashboard.yaml"
+pass helm template hermes . -f ci/default-service-ports-values.yaml \
+  --set dashboard.enabled=true \
+  --set ingress.hosts[0].paths[0].servicePortNumber=9119 \
+  --set ingress.hosts[0].paths[1].path=/v1 \
+  --set ingress.hosts[0].paths[1].pathType=Prefix \
+  --set ingress.hosts[0].paths[1].servicePortNumber=8642 >"$TMP_DIR/dashboard-api.yaml"
+
+expect_render_contains "dashboard enables supervised startup" 'name: HERMES_DASHBOARD' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard configures bind address" 'name: HERMES_DASHBOARD_HOST' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard configures port" 'name: HERMES_DASHBOARD_PORT' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard configures public URL" 'value: "https://hermes.example.test"' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard declares container port" 'containerPort: 9120' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard exposes Service port" 'targetPort: 9120' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "dashboard-only ingress selects dashboard port" 'number: 9120' "$TMP_DIR/dashboard.yaml"
+expect_render_contains "shared ingress routes dashboard" 'number: 9119' "$TMP_DIR/dashboard-api.yaml"
+expect_render_contains "shared ingress routes API" 'number: 8642' "$TMP_DIR/dashboard-api.yaml"
+expect_render_contains "shared ingress preserves API path" 'path: /v1' "$TMP_DIR/dashboard-api.yaml"
+if grep -Fq 'name: HERMES_DASHBOARD' "$TMP_DIR/default.yaml"; then
+  echo "FAIL: dashboard must remain opt-in"
+  exit 1
+fi
 
 init_names="$(awk '/^      initContainers:/ { in_init = 1; next } /^      containers:/ { in_init = 0 } in_init && /^        (- name:|  name:)/ { print $NF }' "$TMP_DIR/pre-bootstrap.yaml")"
 if [[ "$init_names" != $'before-first\nbefore-second\nbootstrap-config\nnpm-install\nafter-bootstrap' ]]; then

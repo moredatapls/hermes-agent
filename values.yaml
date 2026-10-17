@@ -190,6 +190,12 @@ tenant:
   id: ""
   labels: {}
 
+dashboard:
+  enabled: false
+  host: "0.0.0.0"
+  port: 9119
+  publicUrl: ""
+
 apiServer:
   enabled: false
   host: "0.0.0.0"
@@ -243,7 +249,7 @@ service:
   internalTrafficPolicy: ""
   loadBalancerSourceRanges: []
   # When empty, the chart automatically exposes enabled apiServer/webhook/
-  # telegramWebhook listeners using their configured port values. Explicit
+  # telegramWebhook/dashboard listeners using their configured port values. Explicit
   # entries override the defaults.
   # ports:
   #   - name: api-server

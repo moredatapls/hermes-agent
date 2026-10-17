@@ -275,7 +275,75 @@ service:
   enabled: true
 ```
 
-If `service.ports` is empty, the chart automatically derives Service ports from enabled listeners (`apiServer`, `webhook`, and `telegramWebhook`). Keep explicit `service.ports` only when you need custom front-door mappings.
+If `service.ports` is empty, the chart automatically derives Service ports from enabled listeners (`apiServer`, `webhook`, `telegramWebhook`, and `dashboard`). Keep explicit `service.ports` only when you need custom front-door mappings.
+
+### Web dashboard
+
+The official image includes the dashboard but does not start it by default. Set `dashboard.enabled=true` to enable its supervised startup alongside the gateway:
+
+```yaml
+dashboard:
+  enabled: true
+  host: 0.0.0.0
+  port: 9119
+  publicUrl: https://hermes.example.com
+
+secrets:
+  existingSecret: hermes-secrets
+
+service:
+  enabled: true
+```
+
+The chart sets `HERMES_DASHBOARD`, `HERMES_DASHBOARD_HOST`, `HERMES_DASHBOARD_PORT`, and, when provided, `HERMES_DASHBOARD_PUBLIC_URL`. This uses the official image's s6 entrypoint; a custom `command` that bypasses that entrypoint, or a runtime that prevents it from owning PID 1, must arrange dashboard startup separately. The image's s6 initialization must also be compatible with your pod's security context and writable mounts; rendering these settings does not verify container startup.
+
+A non-loopback dashboard refuses to start without authentication. For a public Ingress, configure Nous OAuth (for example, `HERMES_DASHBOARD_OAUTH_CLIENT_ID` in the referenced Secret) or self-hosted OIDC. The API's `API_SERVER_KEY` does not authenticate dashboard users. The bundled username/password provider is intended only for trusted networks or VPN access. See the [upstream dashboard documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard) for provider setup, callback registration, and bounded `dashboard.trusted_proxies` configuration for TLS termination.
+
+### Dashboard and API on one Ingress
+
+One Ingress can route to both Service ports. Keep the dashboard at `/` and route the API's existing `/v1` prefix to port `8642`, without stripping or rewriting paths:
+
+```yaml
+dashboard:
+  enabled: true
+  publicUrl: https://hermes.example.com
+
+apiServer:
+  enabled: true
+
+secrets:
+  existingSecret: hermes-secrets
+
+service:
+  enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: hermes.example.com
+      paths:
+        - path: /v1
+          pathType: Prefix
+          servicePortNumber: 8642
+        - path: /health
+          pathType: Exact
+          servicePortNumber: 8642
+        - path: /
+          pathType: Prefix
+          servicePortNumber: 9119
+  tls:
+    - hosts:
+        - hermes.example.com
+      secretName: hermes-tls
+```
+
+The referenced Secret must contain `API_SERVER_KEY` plus the dashboard provider's configuration. API clients use `https://hermes.example.com/v1`; dashboard assets, `/api`, `/auth`, and WebSocket routes stay on the dashboard backend. Ensure your controller supports WebSocket upgrades and long-lived connections. The more-specific `/v1` route takes precedence over `/`.
+
+Avoid moving the dashboard to an arbitrary prefix such as `/dashboard` without verifying frontend assets, redirects, cookies, and WebSocket paths against your image and proxy. `dashboard.publicUrl` sets the public authentication URL; it is not an Ingress rewrite or a guarantee of frontend subpath support. Separate hostnames on the same Ingress are another option when you need fully independent URL spaces.
 
 ### Ingress controller pattern
 
@@ -304,7 +372,7 @@ ingress:
 Key notes:
 
 - `ingress.enabled=true` requires `service.enabled=true`
-- Ingress can target a derived default service port or `ingress.servicePortNumber`
+- Ingress can target a derived default service port, `ingress.servicePortNumber`, or a per-path `servicePortNumber`
 - `service.annotations` can be used for controller- or cloud-specific integration on `LoadBalancer` services
 
 ### Istio VirtualService pattern
