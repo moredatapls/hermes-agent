@@ -6,6 +6,7 @@
 {{- $servicePorts := include "hermes-agent.servicePorts" . | fromJsonArray -}}
 {{- $affinity := deepCopy (.Values.affinity | default dict) -}}
 {{- $npmEnabled := gt (len .Values.npmPackages) 0 -}}
+{{- $image := printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag | toString) -}}
 {{- $bootstrapConfigMapName := include "hermes-agent.bootstrapConfigMapName" . -}}
 {{- $bootstrapConfigPath := printf "/bootstrap/%s" .Values.bootstrap.configKey -}}
 {{- $bootstrapSoulPath := printf "/bootstrap/%s" .Values.bootstrap.soulKey -}}
@@ -101,7 +102,7 @@ spec:
       initContainers:
         {{- if .Values.bootstrap.enabled }}
         - name: bootstrap-config
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ $image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/sh
@@ -136,7 +137,7 @@ spec:
         {{- end }}
         {{- if $npmEnabled }}
         - name: npm-install
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ $image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/sh
@@ -173,7 +174,7 @@ spec:
       {{- end }}
       containers:
         - name: hermes-agent
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ $image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- with .Values.command }}
           command:

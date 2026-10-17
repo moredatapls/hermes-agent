@@ -3,7 +3,8 @@ fullnameOverride: ""
 
 image:
   repository: nousresearch/hermes-agent
-  tag: "v0.22.2"
+  # Defaults to the chart appVersion when empty.
+  tag: ""
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
