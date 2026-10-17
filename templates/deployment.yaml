@@ -6,7 +6,7 @@
 {{- $servicePorts := include "hermes-agent.servicePorts" . | fromJsonArray -}}
 {{- $affinity := deepCopy (.Values.affinity | default dict) -}}
 {{- $npmEnabled := gt (len .Values.npmPackages) 0 -}}
-{{- $image := printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag | toString) -}}
+{{- $image := printf "%s:%s" .Values.image.repository (default (printf "v%s" .Chart.AppVersion) .Values.image.tag | toString) -}}
 {{- $bootstrapConfigMapName := include "hermes-agent.bootstrapConfigMapName" . -}}
 {{- $bootstrapConfigPath := printf "/bootstrap/%s" .Values.bootstrap.configKey -}}
 {{- $bootstrapSoulPath := printf "/bootstrap/%s" .Values.bootstrap.soulKey -}}
