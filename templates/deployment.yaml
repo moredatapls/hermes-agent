@@ -98,8 +98,11 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or .Values.bootstrap.enabled $npmEnabled .Values.extraInitContainers }}
+      {{- if or .Values.extraInitContainersBeforeBootstrap .Values.bootstrap.enabled $npmEnabled .Values.extraInitContainers }}
       initContainers:
+        {{- with .Values.extraInitContainersBeforeBootstrap }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- if .Values.bootstrap.enabled }}
         - name: bootstrap-config
           image: {{ $image | quote }}

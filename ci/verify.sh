@@ -57,6 +57,7 @@ pass helm lint . -f ci/default-service-ports-values.yaml
 pass helm lint . -f ci/external-secret-values.yaml
 pass helm lint . -f ci/tenant-isolation-values.yaml
 pass helm lint . -f ci/operator-values.yaml
+pass helm lint . -f ci/pre-bootstrap-values.yaml
 pass helm template hermes . >"$TMP_DIR/default.yaml"
 pass helm template hermes . -f ci/test-values.yaml >"$TMP_DIR/test-values.yaml"
 pass helm template hermes . -f ci/existing-claim-values.yaml >"$TMP_DIR/existing-claim.yaml"
@@ -66,6 +67,26 @@ pass helm template hermes . -f ci/external-secret-values.yaml >"$TMP_DIR/externa
 pass helm template hermes . -f ci/tenant-isolation-values.yaml >"$TMP_DIR/tenant-isolation.yaml"
 pass helm template hermes . -f ci/operator-values.yaml >"$TMP_DIR/operator.yaml"
 pass helm template hermes . --include-crds -f ci/operator-values.yaml >"$TMP_DIR/operator-with-crds.yaml"
+pass helm template hermes . -f ci/pre-bootstrap-values.yaml >"$TMP_DIR/pre-bootstrap.yaml"
+pass helm template hermes . -f ci/pre-bootstrap-values.yaml --set bootstrap.enabled=false \
+  --set-json 'npmPackages=[]' --set-json 'extraInitContainers=[]' >"$TMP_DIR/pre-bootstrap-only.yaml"
+pass helm template hermes . --set bootstrap.enabled=false >"$TMP_DIR/no-init.yaml"
+
+init_names="$(awk '/^      initContainers:/ { in_init = 1; next } /^      containers:/ { in_init = 0 } in_init && /^        (- name:|  name:)/ { print $NF }' "$TMP_DIR/pre-bootstrap.yaml")"
+if [[ "$init_names" != $'before-first\nbefore-second\nbootstrap-config\nnpm-install\nafter-bootstrap' ]]; then
+  echo "FAIL: pre-bootstrap, built-in, and existing custom init containers must retain their order"
+  exit 1
+fi
+init_names="$(awk '/^      initContainers:/ { in_init = 1; next } /^      containers:/ { in_init = 0 } in_init && /^        (- name:|  name:)/ { print $NF }' "$TMP_DIR/pre-bootstrap-only.yaml")"
+if [[ "$init_names" != $'before-first\nbefore-second' ]]; then
+  echo "FAIL: pre-bootstrap init containers must render without built-in init containers"
+  exit 1
+fi
+if grep -Fq 'initContainers:' "$TMP_DIR/no-init.yaml"; then
+  echo "FAIL: empty init container lists must not render an initContainers field"
+  exit 1
+fi
+echo "PASS: pre-bootstrap init containers preserve ordering and render independently"
 
 expect_render_contains \
   "external bootstrap fixture points at the external ConfigMap" \

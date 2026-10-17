@@ -218,6 +218,12 @@
         }
       }
     },
+    "extraInitContainersBeforeBootstrap": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
     "secrets": {
       "type": "object",
       "properties": {

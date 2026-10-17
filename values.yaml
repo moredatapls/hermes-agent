@@ -350,6 +350,7 @@ topologySpreadConstraints: []
 
 extraVolumes: []
 extraVolumeMounts: []
+extraInitContainersBeforeBootstrap: []
 extraInitContainers: []
 extraContainers: []
 extraObjects: []

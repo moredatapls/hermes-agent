@@ -1,0 +1,15 @@
+extraInitContainersBeforeBootstrap:
+  - name: before-first
+    image: busybox:1.37.0
+    command: ["true"]
+  - name: before-second
+    image: busybox:1.37.0
+    command: ["true"]
+
+npmPackages:
+  - cowsay
+
+extraInitContainers:
+  - name: after-bootstrap
+    image: busybox:1.37.0
+    command: ["true"]

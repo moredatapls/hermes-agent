@@ -80,6 +80,39 @@ The chart exposes four main configuration layers:
 - `bootstrap.existingConfigMap` reuses externally managed bootstrap content instead of rendering a chart-owned ConfigMap
 - `npmPackages` installs extra Node packages into the persistent volume and exposes them through `PATH` / `NODE_PATH`
 
+### Custom init containers
+
+`extraInitContainersBeforeBootstrap` accepts Kubernetes container specifications
+that run before the chart's bootstrap and npm installation containers.
+`extraInitContainers` continues to run after those built-in containers. Both lists
+default to empty and are rendered even when bootstrap is disabled.
+
+For example, prepare ownership for a `hostPath` volume before bootstrap:
+
+```yaml
+extraInitContainersBeforeBootstrap:
+  - name: init-data-permissions
+    image: busybox:1.37.0
+    command: ["sh", "-ec", "chown 1000:1000 /data"]
+    securityContext:
+      runAsUser: 0
+      runAsGroup: 0
+      runAsNonRoot: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+        add: ["CHOWN"]
+    volumeMounts:
+      - name: data
+        mountPath: /data
+```
+
+Match the ownership IDs to your `podSecurityContext`. This example changes only
+the volume root's ownership, not existing files or permission bits. It requires
+admission policies allowing root init containers and storage that permits
+ownership changes. Hermes and bootstrap retain their configured security contexts.
+
 ## Operator-ready mode
 
 Operator-ready mode is for platform teams that want Helm to establish the **custom resource API surface** while a separate controller reconciles Hermes tenants. Keep these boundaries in mind:
